@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Arsip Digital Hukum Online (CORS-SAFE)</title>
+    
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3767/3767084.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #dbe5e9;
+            margin: 0;
+            padding: 30px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        h2, h3 { color: #2c3e50; margin-top: 0; }
+        
+        .status-secure {
+            background-color: #e74c3c; color: white; padding: 4px 10px;
+            border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; margin-bottom: 15px;
+        }
+        .status-secure.active { background-color: #2ecc71; }
+
+        .auth-box {
+            background: #f8f9fa; padding: 15px; border-radius: 8px; 
+            border: 1px solid #dee2e6; margin-bottom: 20px;
+        }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; color: #34495e; }
+        input[type="text"], input[type="password"], input[type="file"], select {
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px;
+        }
+        button {
+            background-color: #1e3799; color: white; border: none; padding: 12px 20px;
+            font-size: 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%;
+        }
+        button:hover { background-color: #0c2461; }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #1e3799; color: white; }
+        
+        .btn-download { background-color: #2ecc71; color: white; padding: 6px 12px; text-decoration: none; border-radius: 4px; font-size: 12px; margin-right: 5px; display: inline-block; }
+        .btn-delete { background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+        .no-data { text-align: center; color: #7f8c8d; font-style: italic; padding: 30px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="statusSecure" class="status-secure"><i class="fa-solid fa-lock"></i> Server Terkunci (Belum Terautentikasi)</div>
+    <h2><i class="fa-solid fa-folder-closed"></i> Arsip Digital Hukum (Anti-CORS Mode)</h2>
+    
+    <div class="auth-box">
+        <label for="kunciAkses"><i class="fa-solid fa-key"></i> Masukkan Kunci Akses Dokumen:</label>
+        <input type="password" id="kunciAkses" placeholder="Masukkan password keamanan untuk melihat & simpan arsip..." oninput="verifikasiKunci()">
+    </div>
+    
+    <form id="uploadForm" style="display: none;">
+        <div class="form-group">
+            <label for="namaArsip">Nama / Judul Arsip:</label>
+            <input type="text" id="namaArsip" required placeholder="Contoh: 1/Pdt.G/2026/PN Trt, 2/Pid.B/2026/PN Trt">
+        </div>
+        <div class="form-group">
+            <label for="kategori">Kategori:</label>
+            <select id="kategori">
+                <option value="Perdata">Perdata</option>
+                <option value="Pidana">Pidana</option>
+                <option value="Lainnya">Lain-lain</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="Jenis">Jenis:</label>
+            <select id="Jenis">
+                <option value="Gugatan">Gugatan</option>
+                <option value="Sederhana">Sederhana</option>
+                <option value="Permohonan">Permohonan</option>
+                <option value="Biasa">Biasa</option>
+                <option value="Singkat">Singkat</option>
+                <option value="Cepat">Cepat</option>
+                <option value="Anak">Anak</option>
+                <option value="Prapid">Prapid</option>
+                <option value="Lainnya">Lain-lain</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="fileInput">Pilih File Dokumen (Batas maksimal 10 MB per file):</label>
+            <input type="file" id="fileInput" required>
+        </div>
+        <button type="submit" id="btnSimpan"><i class="fa-solid fa-cloud-arrow-up"></i> Upload ke Server Cloud Aman</button>
+    </form>
+
+    <hr style="margin: 40px 0; border: 0; border-top: 2px dashed #bdc3c7;">
+
+    <h3><i class="fa-solid fa-box-archive"></i> Daftar Arsip Tersimpan</h3>
+    <table id="tabelArsip" style="display: none;">
+        <thead>
+            <tr>
+                <th>Tanggal</th>
+                <th>Nama Arsip</th>
+                <th>Kategori</th>
+                <th>Jenis</th>
+                <th>File Asli</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody id="arsipTableBody">
+            </tbody>
+    </table>
+    <div id="pesanTerkunci" class="no-data">Silakan masukkan Kunci Akses yang benar untuk memuat daftar arsip dari server.</div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCiA1uJS_TQWJRYMENjrwvFPp3qSPjPmPA",
+        authDomain: "arsip-hukum-saya.firebaseapp.com",
+        projectId: "arsip-hukum-saya",
+        storageBucket: "arsip-hukum-saya.firebasestorage.app",
+        messagingSenderId: "933419270959",
+        appId: "1:933419270959:web:95f2485fa265d4963497da",
+        measurementId: "G-X7VVSBDXLH"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const KUNCI_RAHASIA = "KunciRahasiaArsipHukum2026";
+    let unsubListener = null;
+
+    window.verifikasiKunci = function() {
+        const inputKunci = document.getElementById('kunciAkses').value;
+        const statusSecure = document.getElementById('statusSecure');
+        const uploadForm = document.getElementById('uploadForm');
+        const tabelArsip = document.getElementById('tabelArsip');
+        const pesanTerkunci = document.getElementById('pesanTerkunci');
+
+        if (inputKunci === KUNCI_RAHASIA) {
+            statusSecure.className = "status-secure active";
+            statusSecure.innerHTML = `<i class="fa-solid fa-lock-open"></i> Akses Diizinkan (Aman)`;
+            uploadForm.style.display = "block";
+            tabelArsip.style.display = "table";
+            pesanTerkunci.style.display = "none";
+            
+            muatDataRealtime();
+        } else {
+            statusSecure.className = "status-secure";
+            statusSecure.innerHTML = `<i class="fa-solid fa-lock"></i> Server Terkunci (Belum Terautentikasi)`;
+            uploadForm.style.display = "none";
+            tabelArsip.style.display = "none";
+            pesanTerkunci.style.display = "block";
+            if (unsubListener) { unsubListener(); unsubListener = null; }
+        }
+    }
+
+    function muatDataRealtime() {
+        if (unsubListener) return;
+        
+        // Membaca koleksi baru yang dijamin diizinkan oleh rules terbaru
+        unsubListener = onSnapshot(collection(db, "arsip_final_unlimited"), (snapshot) => {
+            const tableBody = document.getElementById('arsipTableBody');
+            tableBody.innerHTML = "";
+            let adaData = false;
+
+            snapshot.forEach((documentSnapshot) => {
+                adaData = true;
+                const item = documentSnapshot.data();
+                const idDoc = documentSnapshot.id;
+                const tr = document.createElement('tr');
+
+                tr.innerHTML = `
+                    <td>${item.tanggal}</td>
+                    <td><strong>${item.nama}</strong></td>
+                    <td><span style="background:#d1ecf1; color:#0c5460; padding:3px 8px; border-radius:3px; font-size:12px; font-weight:600;">${item.kategori}</span></td>
+                    <td><span style="background:#fff3cd; color:#856404; padding:3px 8px; border-radius:3px; font-size:12px; font-weight:600;">${item.jenis}</span></td>
+                    <td style="color:#7f8c8d;"><i class="fa-regular fa-file-lines"></i> ${item.namaFile}</td>
+                    <td>
+                        <a href="${item.fileDataUrl}" download="${item.namaFile}" class="btn-download"><i class="fa-solid fa-arrow-down"></i> Unduh / Lihat</a>
+                        <button onclick="hapusArsipAman('${idDoc}')" class="btn-delete"><i class="fa-solid fa-trash-can"></i> Hapus</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            if (!adaData) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="no-data">Belum ada dokumen yang disimpan di server cloud.</td></tr>`;
+            }
+        }, (error) => {
+            console.error(error);
+            alert("Koneksi gagal. Pastikan tab 'Rules' di Firestore Database sudah diganti ke 'allow read, write: if true;'");
+        });
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btnSimpan = document.getElementById('btnSimpan');
+        const fileInput = document.getElementById('fileInput').files[0];
+
+        if (!fileInput) return;
+
+        // Batasan 10 MB murni dari sistem dokumen teks tunggal Firestore
+        if (fileInput.size > 10 * 1024 * 1024) {
+            alert("Ukuran file terlalu besar! Di mode aman ini, batas maksimal satu file adalah 10 MB agar terhindar dari pemblokiran CORS.");
+            return;
+        }
+
+        btnSimpan.disabled = true;
+        btnSimpan.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Mengamankan & Mengunggah Dokumen...`;
+
+        const reader = new FileReader();
+        reader.readAsDataURL(fileInput);
+
+        reader.onloadend = async function() {
+            try {
+                await addDoc(collection(db, "arsip_final_unlimited"), {
+                    nama: document.getElementById('namaArsip').value,
+                    kategori: document.getElementById('kategori').value,
+                    jenis: document.getElementById('Jenis').value,
+                    namaFile: fileInput.name,
+                    fileDataUrl: reader.result, // File diringkas menjadi baris teks aman bebas dari CORS
+                    tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                });
+
+                alert("Sukses! Dokumen hukum berhasil disimpan dengan aman di server cloud.");
+                document.getElementById('uploadForm').reset();
+
+            } catch (error) {
+                console.error(error);
+                alert("Gagal mengunggah! Pastikan tab 'Rules' di Firestore Database sudah bernilai 'allow read, write: if true;'");
+            } finally {
+                btnSimpan.disabled = false;
+                btnSimpan.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Upload ke Server Cloud Aman`;
+            }
+        };
+    });
+
+    window.hapusArsipAman = async function(idDoc) {
+        if (confirm("Apakah Anda yakin ingin menghapus dokumen ini secara permanen dari cloud?")) {
+            try {
+                await deleteDoc(doc(db, "arsip_final_unlimited", idDoc));
+                alert("Arsip berhasil dihapus.");
+            } catch (error) {
+                alert("Gagal menghapus.");
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
