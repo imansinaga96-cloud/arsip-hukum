@@ -64,7 +64,7 @@
 
 <div class="container">
     <div id="statusSecure" class="status-secure"><i class="fa-solid fa-lock"></i> Server Terkunci (Belum Terautentikasi)</div>
-    <h2><i class="fa-solid fa-folder-closed"></i> Arsip Digital Hukum (Anti-CORS Mode)</h2>
+    <h2><i class="fa-solid fa-folder-closed"></i> Arsip Digital Hukum </h2>
     
     <div class="auth-box">
         <label for="kunciAkses"><i class="fa-solid fa-key"></i> Masukkan Kunci Akses Dokumen:</label>
@@ -74,7 +74,7 @@
     <form id="uploadForm" style="display: none;">
         <div class="form-group">
             <label for="namaArsip">Nama / Judul Arsip:</label>
-            <input type="text" id="namaArsip" required placeholder="Contoh: 1/Pdt.G/2026/PN Trt, 2/Pid.B/2026/PN Trt">
+            <input type="text" id="namaArsip" required placeholder="Contoh: 1/Pdt.G/2026/PN Trt">
         </div>
         <div class="form-group">
             <label for="kategori">Kategori:</label>
@@ -142,7 +142,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const KUNCI_RAHASIA = "KunciRahasiaArsipHukum2026";
+    const KUNCI_RAHASIA = "KunciRahasia88";
     let unsubListener = null;
 
     window.verifikasiKunci = function() {
