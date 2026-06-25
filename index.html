@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Arsip Digital Hukum Online (CORS-SAFE)</title>
     
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3767/3767084.png">
+    <!-- Ikon Aplikasi Baru Kamu -->
+    <link rel="icon" type="image/png" href="icon.png">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -163,7 +165,7 @@
             statusSecure.innerHTML = `<i class="fa-solid fa-lock"></i> Server Terkunci (Belum Terautentikasi)`;
             uploadForm.style.display = "none";
             tabelArsip.style.display = "none";
-            pesanTerkunci.style.display = "block";
+            pesanTextKunci.style.display = "block";
             if (unsubListener) { unsubListener(); unsubListener = null; }
         }
     }
@@ -171,7 +173,6 @@
     function muatDataRealtime() {
         if (unsubListener) return;
         
-        // Membaca koleksi baru yang dijamin diizinkan oleh rules terbaru
         unsubListener = onSnapshot(collection(db, "arsip_final_unlimited"), (snapshot) => {
             const tableBody = document.getElementById('arsipTableBody');
             tableBody.innerHTML = "";
@@ -213,7 +214,6 @@
 
         if (!fileInput) return;
 
-        // Batasan 10 MB murni dari sistem dokumen teks tunggal Firestore
         if (fileInput.size > 10 * 1024 * 1024) {
             alert("Ukuran file terlalu besar! Di mode aman ini, batas maksimal satu file adalah 10 MB agar terhindar dari pemblokiran CORS.");
             return;
@@ -232,7 +232,7 @@
                     kategori: document.getElementById('kategori').value,
                     jenis: document.getElementById('Jenis').value,
                     namaFile: fileInput.name,
-                    fileDataUrl: reader.result, // File diringkas menjadi baris teks aman bebas dari CORS
+                    fileDataUrl: reader.result,
                     tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
                 });
 
