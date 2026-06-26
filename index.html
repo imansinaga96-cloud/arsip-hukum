@@ -38,7 +38,7 @@
             border: 1px solid #dee2e6; margin-bottom: 20px;
         }
 
-        /* --- Tampilan Baru: Dashboard Section --- */
+        /* --- Dashboard Section --- */
         .dashboard-grid {
             display: grid;
             grid-template-columns: 1fr 2fr;
@@ -90,7 +90,6 @@
             color: #a4b0be;
             font-size: 16px;
         }
-        /* -------------------------------------- */
 
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 6px; font-weight: 600; color: #34495e; }
@@ -151,7 +150,7 @@
         </div>
         <div class="form-group">
             <label for="kategori">Kategori:</label>
-            <select id="kategori">
+            <select id="kategori" onchange="sesuaikanJenisDokumen()">
                 <option value="Perdata">Perdata</option>
                 <option value="Pidana">Pidana</option>
                 <option value="Lainnya">Lain-lain</option>
@@ -163,11 +162,6 @@
                 <option value="Gugatan">Gugatan</option>
                 <option value="Sederhana">Sederhana</option>
                 <option value="Permohonan">Permohonan</option>
-                <option value="Biasa">Biasa</option>
-                <option value="Singkat">Singkat</option>
-                <option value="Cepat">Cepat</option>
-                <option value="Anak">Anak</option>
-                <option value="Prapid">Prapid</option>
                 <option value="Lainnya">Lain-lain</option>
             </select>
         </div>
@@ -217,7 +211,39 @@
 
     const KUNCI_RAHASIA = "KunciRahasia88";
     let unsubListener = null;
-    let semuaDataArsip = []; // Tempat menyimpan data sementara untuk fitur pencarian cepat
+    let semuaDataArsip = [];
+
+    // Fitur Baru: Logika Pengondisian untuk Mengubah Pilihan Dropdown Jenis secara Otomatis
+    window.sesuaikanJenisDokumen = function() {
+        const kategori = document.getElementById('kategori').value;
+        const jenisSelect = document.getElementById('Jenis');
+        
+        // Bersihkan pilihan lama terlebih dahulu
+        jenisSelect.innerHTML = "";
+
+        if (kategori === "Perdata") {
+            jenisSelect.innerHTML = `
+                <option value="Gugatan">Gugatan</option>
+                <option value="Sederhana">Sederhana</option>
+                <option value="Permohonan">Permohonan</option>
+                <option value="Lainnya">Lain-lain</option>
+            `;
+        } else if (kategori === "Pidana") {
+            jenisSelect.innerHTML = `
+                <option value="Biasa">Biasa</option>
+                <option value="Singkat">Singkat</option>
+                <option value="Cepat">Cepat</option>
+                <option value="Anak">Anak</option>
+                <option value="Prapid">Prapid</option>
+                <option value="Lainnya">Lain-lain</option>
+            `;
+        } else {
+            // Jika memilih kategori 'Lainnya'
+            jenisSelect.innerHTML = `
+                <option value="Lainnya">Lain-lain</option>
+            `;
+        }
+    }
 
     window.verifikasiKunci = function() {
         const inputKunci = document.getElementById('kunciAkses').value;
@@ -229,139 +255,4 @@
 
         if (inputKunci === KUNCI_RAHASIA) {
             statusSecure.className = "status-secure active";
-            statusSecure.innerHTML = `<i class="fa-solid fa-lock-open"></i> Akses Diizinkan (Aman)`;
-            uploadForm.style.display = "block";
-            tabelArsip.style.display = "table";
-            pesanTerkunci.style.display = "none";
-            dashboardSection.style.display = "grid"; // Tampilkan dashboard berkembar
-            
-            muatDataRealtime();
-        } else {
-            statusSecure.className = "status-secure";
-            statusSecure.innerHTML = `<i class="fa-solid fa-lock"></i> Server Terkunci (Belum Terautentikasi)`;
-            uploadForm.style.display = "none";
-            tabelArsip.style.display = "none";
-            pesanTerkunci.style.display = "block";
-            dashboardSection.style.display = "none"; // Sembunyikan dashboard
-            if (unsubListener) { unsubListener(); unsubListener = null; }
-        }
-    }
-
-    function muatDataRealtime() {
-        if (unsubListener) return;
-        
-        unsubListener = onSnapshot(collection(db, "arsip_final_unlimited"), (snapshot) => {
-            semuaDataArsip = []; // Reset penampung data lama
-            
-            snapshot.forEach((documentSnapshot) => {
-                const item = documentSnapshot.data();
-                const idDoc = documentSnapshot.id;
-                semuaDataArsip.push({ id: idDoc, ...item });
-            });
-
-            // Perbarui Angka Ringkasan (Counter) secara otomatis
-            document.getElementById('totalArsipCount').innerText = semuaDataArsip.length;
-
-            // Tampilkan data ke tabel
-            tampilkanKeTabel(semuaDataArsip);
-            
-        }, (error) => {
-            console.error(error);
-            alert("Koneksi gagal. Pastikan tab 'Rules' di Firestore Database sudah diganti ke 'allow read, write: if true;'");
-        });
-    }
-
-    // Fungsi bantu untuk merender baris tabel dokumen
-    function tampilkanKeTabel(data) {
-        const tableBody = document.getElementById('arsipTableBody');
-        tableBody.innerHTML = "";
-
-        if (data.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="6" class="no-data">Tidak ada dokumen yang cocok atau tersimpan.</td></tr>`;
-            return;
-        }
-
-        data.forEach((item) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${item.tanggal}</td>
-                <td><strong>${item.nama}</strong></td>
-                <td><span style="background:#d1ecf1; color:#0c5460; padding:3px 8px; border-radius:3px; font-size:12px; font-weight:600;">${item.kategori}</span></td>
-                <td><span style="background:#fff3cd; color:#856404; padding:3px 8px; border-radius:3px; font-size:12px; font-weight:600;">${item.jenis}</span></td>
-                <td style="color:#7f8c8d;"><i class="fa-regular fa-file-lines"></i> ${item.namaFile}</td>
-                <td>
-                    <a href="${item.fileDataUrl}" download="${item.namaFile}" class="btn-download"><i class="fa-solid fa-arrow-down"></i> Unduh / Lihat</a>
-                    <button onclick="hapusArsipAman('${item.id}')" class="btn-delete"><i class="fa-solid fa-trash-can"></i> Hapus</button>
-                </td>
-            `;
-            tableBody.appendChild(tr);
-        });
-    }
-
-    // Fungsi Baru: Menyaring data secara langsung berdasarkan apa yang diketik user
-    window.filterArsip = function() {
-        const kataKunci = document.getElementById('cariNomorBerkas').value.toLowerCase();
-        
-        const hasilSaring = semuaDataArsip.filter(item => {
-            return item.nama.toLowerCase().includes(kataKunci);
-        });
-
-        tampilkanKeTabel(hasilSaring);
-    }
-
-    document.getElementById('uploadForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const btnSimpan = document.getElementById('btnSimpan');
-        const fileInput = document.getElementById('fileInput').files[0];
-
-        if (!fileInput) return;
-
-        if (fileInput.size > 10 * 1024 * 1024) {
-            alert("Ukuran file terlalu besar! Di mode aman ini, batas maksimal satu file adalah 10 MB agar terhindar dari pemblokiran CORS.");
-            return;
-        }
-
-        btnSimpan.disabled = true;
-        btnSimpan.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Mengamankan & Mengunggah Dokumen...`;
-
-        const reader = new FileReader();
-        reader.readAsDataURL(fileInput);
-
-        reader.onloadend = async function() {
-            try {
-                await addDoc(collection(db, "arsip_final_unlimited"), {
-                    nama: document.getElementById('namaArsip').value,
-                    kategori: document.getElementById('kategori').value,
-                    jenis: document.getElementById('Jenis').value,
-                    namaFile: fileInput.name,
-                    fileDataUrl: reader.result,
-                    tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-                });
-
-                alert("Sukses! Dokumen hukum berhasil disimpan dengan aman di server cloud.");
-                document.getElementById('uploadForm').reset();
-
-            } catch (error) {
-                console.error(error);
-                alert("Gagal mengunggah! Pastikan tab 'Rules' di Firestore Database sudah bernilai 'allow read, write: if true;'");
-            } finally {
-                btnSimpan.disabled = false;
-                btnSimpan.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Upload ke Server Cloud Aman`;
-            }
-        };
-    });
-
-    window.hapusArsipAman = async function(idDoc) {
-        if (confirm("Apakah Anda yakin ingin menghapus dokumen ini secara permanen dari cloud?")) {
-            try {
-                await deleteDoc(doc(db, "arsip_final_unlimited", idDoc));
-                alert("Arsip berhasil dihapus.");
-            } catch (error) {
-                alert("Gagal menghapus.");
-            }
-        }
-    }
-</script>
-
-</body>
-</html>
+            statusSecure.innerHTML
