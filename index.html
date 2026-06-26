@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Arsip Digital Hukum Online (CORS-SAFE)</title>
     
-    <!-- Ikon Aplikasi Baru Kamu -->
     <link rel="icon" type="image/png" href="icon.png">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -39,6 +38,60 @@
             border: 1px solid #dee2e6; margin-bottom: 20px;
         }
 
+        /* --- Tampilan Baru: Dashboard Section --- */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .counter-card {
+            background: linear-gradient(135deg, #1e3799, #0c2461);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 10px rgba(30, 55, 153, 0.2);
+        }
+        .counter-info h4 { margin: 0; font-size: 14px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; }
+        .counter-info .count-number { font-size: 36px; font-weight: bold; margin-top: 5px; display: block; }
+        .counter-icon { font-size: 40px; opacity: 0.3; }
+
+        .search-card {
+            background: #f1f2f6;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #ced4da;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .search-wrapper { position: relative; }
+        .search-wrapper input {
+            width: 100%;
+            padding: 12px 15px 12px 40px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        .search-wrapper input:focus {
+            border-color: #1e3799;
+            box-shadow: 0 0 0 3px rgba(30, 55, 153, 0.1);
+            outline: none;
+        }
+        .search-wrapper i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a4b0be;
+            font-size: 16px;
+        }
+        /* -------------------------------------- */
+
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 6px; font-weight: 600; color: #34495e; }
         input[type="text"], input[type="password"], input[type="file"], select {
@@ -69,6 +122,26 @@
     <div class="auth-box">
         <label for="kunciAkses"><i class="fa-solid fa-key"></i> Masukkan Kunci Akses Dokumen:</label>
         <input type="password" id="kunciAkses" placeholder="Masukkan password keamanan untuk melihat & simpan arsip..." oninput="verifikasiKunci()">
+    </div>
+
+    <div id="dashboardSection" class="dashboard-grid" style="display: none;">
+        <div class="counter-card">
+            <div class="counter-info">
+                <h4>Total Arsip</h4>
+                <span id="totalArsipCount" class="count-number">0</span>
+            </div>
+            <div class="counter-icon">
+                <i class="fa-solid fa-file-invoice"></i>
+            </div>
+        </div>
+
+        <div class="search-card">
+            <label for="cariNomorBerkas" style="margin-bottom: 8px;"><i class="fa-solid fa-magnifying-glass"></i> Cari Nomor Berkas / Nama Arsip:</label>
+            <div class="search-wrapper">
+                <i class="fa-solid fa-search"></i>
+                <input type="text" id="cariNomorBerkas" placeholder="Ketik nomor berkas (Contoh: 1/Pdt.G/2026)..." oninput="filterArsip()">
+            </div>
+        </div>
     </div>
     
     <form id="uploadForm" style="display: none;">
@@ -144,6 +217,7 @@
 
     const KUNCI_RAHASIA = "KunciRahasia88";
     let unsubListener = null;
+    let semuaDataArsip = []; // Tempat menyimpan data sementara untuk fitur pencarian cepat
 
     window.verifikasiKunci = function() {
         const inputKunci = document.getElementById('kunciAkses').value;
@@ -151,6 +225,7 @@
         const uploadForm = document.getElementById('uploadForm');
         const tabelArsip = document.getElementById('tabelArsip');
         const pesanTerkunci = document.getElementById('pesanTerkunci');
+        const dashboardSection = document.getElementById('dashboardSection');
 
         if (inputKunci === KUNCI_RAHASIA) {
             statusSecure.className = "status-secure active";
@@ -158,6 +233,7 @@
             uploadForm.style.display = "block";
             tabelArsip.style.display = "table";
             pesanTerkunci.style.display = "none";
+            dashboardSection.style.display = "grid"; // Tampilkan dashboard berkembar
             
             muatDataRealtime();
         } else {
@@ -165,7 +241,8 @@
             statusSecure.innerHTML = `<i class="fa-solid fa-lock"></i> Server Terkunci (Belum Terautentikasi)`;
             uploadForm.style.display = "none";
             tabelArsip.style.display = "none";
-            pesanTextKunci.style.display = "block";
+            pesanTerkunci.style.display = "block";
+            dashboardSection.style.display = "none"; // Sembunyikan dashboard
             if (unsubListener) { unsubListener(); unsubListener = null; }
         }
     }
@@ -174,37 +251,62 @@
         if (unsubListener) return;
         
         unsubListener = onSnapshot(collection(db, "arsip_final_unlimited"), (snapshot) => {
-            const tableBody = document.getElementById('arsipTableBody');
-            tableBody.innerHTML = "";
-            let adaData = false;
-
+            semuaDataArsip = []; // Reset penampung data lama
+            
             snapshot.forEach((documentSnapshot) => {
-                adaData = true;
                 const item = documentSnapshot.data();
                 const idDoc = documentSnapshot.id;
-                const tr = document.createElement('tr');
-
-                tr.innerHTML = `
-                    <td>${item.tanggal}</td>
-                    <td><strong>${item.nama}</strong></td>
-                    <td><span style="background:#d1ecf1; color:#0c5460; padding:3px 8px; border-radius:3px; font-size:12px; font-weight:600;">${item.kategori}</span></td>
-                    <td><span style="background:#fff3cd; color:#856404; padding:3px 8px; border-radius:3px; font-size:12px; font-weight:600;">${item.jenis}</span></td>
-                    <td style="color:#7f8c8d;"><i class="fa-regular fa-file-lines"></i> ${item.namaFile}</td>
-                    <td>
-                        <a href="${item.fileDataUrl}" download="${item.namaFile}" class="btn-download"><i class="fa-solid fa-arrow-down"></i> Unduh / Lihat</a>
-                        <button onclick="hapusArsipAman('${idDoc}')" class="btn-delete"><i class="fa-solid fa-trash-can"></i> Hapus</button>
-                    </td>
-                `;
-                tableBody.appendChild(tr);
+                semuaDataArsip.push({ id: idDoc, ...item });
             });
 
-            if (!adaData) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="no-data">Belum ada dokumen yang disimpan di server cloud.</td></tr>`;
-            }
+            // Perbarui Angka Ringkasan (Counter) secara otomatis
+            document.getElementById('totalArsipCount').innerText = semuaDataArsip.length;
+
+            // Tampilkan data ke tabel
+            tampilkanKeTabel(semuaDataArsip);
+            
         }, (error) => {
             console.error(error);
             alert("Koneksi gagal. Pastikan tab 'Rules' di Firestore Database sudah diganti ke 'allow read, write: if true;'");
         });
+    }
+
+    // Fungsi bantu untuk merender baris tabel dokumen
+    function tampilkanKeTabel(data) {
+        const tableBody = document.getElementById('arsipTableBody');
+        tableBody.innerHTML = "";
+
+        if (data.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="6" class="no-data">Tidak ada dokumen yang cocok atau tersimpan.</td></tr>`;
+            return;
+        }
+
+        data.forEach((item) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.tanggal}</td>
+                <td><strong>${item.nama}</strong></td>
+                <td><span style="background:#d1ecf1; color:#0c5460; padding:3px 8px; border-radius:3px; font-size:12px; font-weight:600;">${item.kategori}</span></td>
+                <td><span style="background:#fff3cd; color:#856404; padding:3px 8px; border-radius:3px; font-size:12px; font-weight:600;">${item.jenis}</span></td>
+                <td style="color:#7f8c8d;"><i class="fa-regular fa-file-lines"></i> ${item.namaFile}</td>
+                <td>
+                    <a href="${item.fileDataUrl}" download="${item.namaFile}" class="btn-download"><i class="fa-solid fa-arrow-down"></i> Unduh / Lihat</a>
+                    <button onclick="hapusArsipAman('${item.id}')" class="btn-delete"><i class="fa-solid fa-trash-can"></i> Hapus</button>
+                </td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+
+    // Fungsi Baru: Menyaring data secara langsung berdasarkan apa yang diketik user
+    window.filterArsip = function() {
+        const kataKunci = document.getElementById('cariNomorBerkas').value.toLowerCase();
+        
+        const hasilSaring = semuaDataArsip.filter(item => {
+            return item.nama.toLowerCase().includes(kataKunci);
+        });
+
+        tampilkanKeTabel(hasilSaring);
     }
 
     document.getElementById('uploadForm').addEventListener('submit', function(e) {
